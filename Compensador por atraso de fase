@@ -1,0 +1,76 @@
+% Limpa a tela, as variáveis e fecha gráficos anteriores
+clc;
+clear;
+close all;
+
+%% 1. Definição da Planta e dos Compensadores
+
+% Planta original (parte dinâmica, sem o ganho)
+G_planta = tf(1, [1, 5.1894, 31.64]);
+
+% --- Compensador de Avanço (Lead) - Para a Resposta Transitória ---
+z_lead = 2.595;
+p_lead = 15.37;
+Gc_lead = tf([1, z_lead], [1, p_lead]);
+
+% --- Compensador de Atraso (Lag) - Para Corrigir o Erro Estacionário ---
+z_lag = 0.5;
+p_lag = 0.01;
+Gc_lag = tf([1, z_lag], [1, p_lag]);
+
+% --- Ganho K projetado para o transitório ---
+K = 35.02;
+
+%% 2. Montagem e Fechamento da Malha Final
+
+% Malha aberta com os DOIS compensadores e o ganho
+L = K * Gc_lead * Gc_lag * G_planta;
+
+% Fecha a malha do sistema final (realimentação unitária)
+T = feedback(L, 1);
+
+% Exibe as funções de transferência para verificação
+disp('Compensador de Avanço Gc_lead(s):');
+disp(Gc_lead);
+disp('Compensador de Atraso Gc_lag(s):');
+disp(Gc_lag);
+disp('Sistema Final de Malha Fechada T(s):');
+disp(T);
+
+
+%% 3. Simulação e Geração do Gráfico Final
+
+% Parâmetros da simulação
+amplitude_degrau = 1.8;
+% O compensador de atraso introduz uma dinâmica lenta, então simulamos por mais tempo
+tempo_final = 150; 
+t_sim = 0:0.1:tempo_final;
+
+% Calcula a resposta ao degrau do sistema em malha fechada
+[y, t] = step(T, t_sim);
+y_escalado = y * amplitude_degrau;
+
+%% 4. Análise da Resposta
+info = stepinfo(y_escalado, t, 'SettlingTimeThreshold', 0.02);
+overshoot_real = info.Overshoot;
+ts_real = info.SettlingTime;
+valor_final_real = y_escalado(end);
+
+fprintf('\n--- Análise de Desempenho do Sistema Final (Avanço-Atraso) ---\n');
+fprintf('Overshoot: %.2f%%\n', overshoot_real);
+fprintf('Tempo de Acomodação (2%%): %.4fs\n', ts_real);
+fprintf('Valor Final Real: %.4f\n', valor_final_real);
+fprintf('--------------------------------------------------\n');
+
+%% 5. Plot do Gráfico Final
+figure;
+hold on;
+plot(t, y_escalado, 'b-', 'LineWidth', 2, 'DisplayName', 'Resposta com Compensador Avanço-Atraso');
+yline(amplitude_degrau, 'k:', 'LineWidth', 1.5, 'DisplayName', 'Entrada Degrau (1.8)');
+title('Resposta ao Degrau do Sistema Final com Compensador Avanço-Atraso');
+xlabel('Tempo (segundos)');
+ylabel('Amplitude de Saída');
+grid on;
+legend('show', 'Location', 'southeast');
+ylim([0, amplitude_degrau * 1.2]);
+hold off;
