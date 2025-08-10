@@ -1,0 +1,72 @@
+% Limpa a tela, as variáveis e fecha gráficos anteriores
+clc;
+clear;
+close all;
+
+%% --- Definição dos Sistemas ---
+
+% 1. Sistema original de 3ª ordem em malha aberta (G1)
+num1 = 1.0442e12;
+den1 = conv([1, 12.1951], [1, 5.1894, 31.64]);
+G1 = tf(num1, den1);
+
+% 2. Sistema original reduzido de 2ª ordem em malha aberta (G2)
+num2 = 8.56e10;
+den2 = [1, 5.1894, 31.64];
+G2 = tf(num2, den2);
+
+% 3. Sistema compensado com PID em malha aberta (L)
+Kp_desejado = 450;
+Ki_desejado = 1836;
+Kd_desejado = 35;
+G_planta = tf(1, [1, 5.1894, 31.64]);
+Gc_pid_norm = tf([Kd_desejado, Kp_desejado, Ki_desejado], [1, 0]);
+L = Gc_pid_norm * G_planta;
+
+% 4. Sistema compensado com PID em malha fechada (T)
+Ganho_Planta = 8.56e10;
+Kp = Kp_desejado / Ganho_Planta;
+Ki = Ki_desejado / Ganho_Planta;
+Kd = Kd_desejado / Ganho_Planta;
+Gc_pid_final = tf([Kd, Kp, Ki], [1, 0]);
+L_final = Gc_pid_final * G2;
+T = feedback(L_final, 1);
+
+
+%% --- Geração dos Gráficos de Polos e Zeros ---
+
+% GRÁFICO 1: Polos do Sistema Original de 3ª Ordem em Malha Aberta
+figure(1);
+pzmap(G1);
+title('1. Polos do Sistema Original (3ª Ordem, Malha Aberta)');
+grid on;
+% <-- MUDANÇA AQUI: Ajustando os limites dos eixos
+xlim([-20, 5]);
+ylim([-20, 20]);
+
+% GRÁFICO 2: Polos do Sistema Original Reduzido em Malha Aberta
+figure(2);
+pzmap(G2);
+title('2. Polos do Sistema Reduzido (2ª Ordem, Malha Aberta)');
+grid on;
+% <-- MUDANÇA AQUI: Ajustando os limites dos eixos
+xlim([-20, 5]);
+ylim([-20, 20]);
+
+% GRÁFICO 3: Polos e Zeros do Sistema Compensado com PID em Malha Aberta
+figure(3);
+pzmap(L);
+title('3. Polos e Zeros do Sistema Compensado com PID (Malha Aberta)');
+grid on;
+% <-- MUDANÇA AQUI: Ajustando os limites dos eixos
+xlim([-20, 5]);
+ylim([-20, 20]);
+
+% GRÁFICO 4: Polos do Sistema Final Compensado em Malha Fechada
+figure(4);
+pzmap(T);
+title('4. Polos do Sistema Final (Malha Fechada)');
+grid on;
+% <-- MUDANÇA AQUI: Ajustando os limites dos eixos
+xlim([-20, 5]);
+ylim([-20, 20]);
