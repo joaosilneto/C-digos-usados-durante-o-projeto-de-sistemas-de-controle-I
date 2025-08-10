@@ -1,0 +1,87 @@
+% Limpa a tela, as variáveis e fecha gráficos anteriores
+clc;
+clear;
+close all;
+
+%% 1. Definição da Planta REAL e dos Ganhos do PID AJUSTADOS
+
+% Planta original de 2ª ordem com seu ganho real
+num2 = 8.56e10;
+den2 = [1, 5.1894, 31.64];
+G2 = tf(num2, den2);
+
+% --- AJUSTE FINO FINAL DOS GANHOS ---
+Kp_desejado = 450;
+Ki_desejado = 1836;
+Kd_desejado = 35;
+
+% Ganho da planta
+Ganho_Planta = 8.56e10;
+
+% Ganhos REAIS do controlador (escalonados)
+Kp = Kp_desejado / Ganho_Planta;
+Ki = Ki_desejado / Ganho_Planta;
+Kd = Kd_desejado / Ganho_Planta;
+
+% Cria a função de transferência do controlador PID com os ganhos ajustados
+Gc_pid = tf([Kd, Kp, Ki], [1, 0]);
+
+%% 2. Montagem e Fechamento da Malha
+L = Gc_pid * G2;
+T = feedback(L, 1);
+disp('Controlador PID com Ganhos FINAIS Gc(s):');
+disp(Gc_pid);
+
+%% 3. Simulação e Análise
+amplitude_degrau = 1.8;
+tempo_final = 5;
+t_sim = 0:0.01:tempo_final;
+[y, t] = step(T, t_sim);
+y_escalado = y * amplitude_degrau;
+
+% Análise de desempenho (os valores continuam sendo calculados para o console)
+info = stepinfo(y_escalado, t, 'SettlingTimeThreshold', 0.02);
+fprintf('\n--- Análise de Desempenho do Sistema com AJUSTE FINO ---\n');
+fprintf('Overshoot Real: %.2f%%\n', info.Overshoot);
+fprintf('Tempo de Acomodação (2%%) Real: %.4fs\n', info.SettlingTime);
+fprintf('Tempo de Pico Real: %.4fs\n', info.PeakTime);
+fprintf('Valor Final Real: %.4f\n', y_escalado(end));
+fprintf('--------------------------------------------------\n');
+
+%% 4. Plot do Gráfico
+figure;
+hold on;
+plot(t, y_escalado, 'b-', 'LineWidth', 2, 'DisplayName', 'Resposta com PID Ajustado');
+yline(amplitude_degrau, 'k:', 'LineWidth', 1.5, 'DisplayName', 'Entrada Degrau (1.8)');
+title('Resposta ao Degrau com Projeto PID Ajustado');
+xlabel('Tempo (segundos)');
+ylabel('Amplitude de Saída');
+grid on;
+ylim([0, amplitude_degrau * 1.2]);
+
+
+%% 5. Anotações no Gráfico  <-- SEÇÃO MODIFICADA AQUI
+
+% Extrai os valores da estrutura 'info' para as anotações
+overshoot_val = info.Overshoot;
+tp_val = info.PeakTime;
+peak_val = info.Peak;
+ts_val_visual = 1.0; % <-- Ponto visual onde o sistema se estabiliza, conforme solicitado
+
+% 1. Anotação do Pico (Overshoot e Tempo de Pico)
+% Adiciona uma linha vertical vermelha tracejada no tempo de pico
+xline(tp_val, 'r--', 'LineWidth', 1);
+text_overshoot = sprintf('Overshoot: %.2f%%', overshoot_val);
+text_tp = sprintf('Tempo de Pico: %.2fs', tp_val);
+text(tp_val + 0.1, peak_val, {text_overshoot, text_tp}, 'FontSize', 10);
+
+% 2. Anotação do Tempo de Assentamento Visual
+% Adiciona uma linha vertical vermelha tracejada em t = 1.0s
+xline(ts_val_visual, 'r--', 'LineWidth', 1);
+text_ts = sprintf('Tempo de Assentamento: ~%.2fs', ts_val_visual);
+text(ts_val_visual + 0.1, 0.2, text_ts, 'FontSize', 10, 'Color', 'r');
+
+
+% Finaliza o gráfico
+legend('show', 'Location', 'southeast');
+hold off;
