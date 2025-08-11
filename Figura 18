@@ -1,0 +1,60 @@
+% Limpa a tela, as variáveis e fecha gráficos anteriores
+clc;
+clear;
+close all;
+
+%% 1. Definição da Planta e do Ganho K para Erro de 7%
+
+% Planta original G2(s)
+num2 = 8.56e10;
+den2 = [1, 5.1894, 31.64];
+G2 = tf(num2, den2);
+
+% Ganho K calculado para Ess <= 7% (do item 1e)
+K = 4.91e-9;
+
+%% 2. Montagem e Fechamento da Malha
+
+% Função de malha aberta com o ganho K
+L = K * G2;
+
+% Fecha a malha do sistema (realimentação unitária)
+T = feedback(L, 1);
+
+%% 3. Simulação e Geração do Gráfico
+amplitude_degrau = 1.8;
+tempo_final = 50; % Simula por um tempo mais longo para garantir a estabilização
+t_sim = 0:0.1:tempo_final;
+
+% Calcula a resposta ao degrau do sistema em malha fechada
+[y, t] = step(T, t_sim);
+y_escalado = y * amplitude_degrau;
+
+% Análise do Erro de Regime Permanente para verificação
+valor_final = y_escalado(end);
+erro_ss = amplitude_degrau - valor_final;
+erro_percentual = (erro_ss / amplitude_degrau) * 100;
+fprintf('Erro de Regime Permanente Real: %.2f%%\n', erro_percentual);
+
+%% 4. Plot do Gráfico
+figure;
+hold on;
+
+% Plota a resposta ao degrau escalada
+plot(t, y_escalado, 'b-', 'LineWidth', 2, 'DisplayName', 'Resposta em Malha Fechada');
+
+% Adiciona a linha de referência do degrau de entrada
+yline(amplitude_degrau, 'k:', 'LineWidth', 1.5, 'DisplayName', 'Entrada Degrau (1.8)');
+
+% Adiciona uma linha para marcar o limite de 7% de erro
+valor_limite_erro = amplitude_degrau * (1 - 0.07);
+yline(valor_limite_erro, 'r--', 'LineWidth', 1.5, 'DisplayName', 'Valor Final (Erro de 7%)');
+
+% Configuração do Gráfico
+title('Resposta ao Degrau com Ganho K para Erro de 7%');
+xlabel('Tempo (segundos)');
+ylabel('Amplitude de Saída');
+grid on;
+legend('show', 'Location', 'best');
+ylim([0, amplitude_degrau * 1.5]); % Ajusta o eixo Y para ver o overshoot
+hold off;
